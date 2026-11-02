@@ -129,8 +129,8 @@ def standalone_web_dashboard():
         </div>
       </div>
       <div class="flex items-center space-x-3">
-        <button onclick="resetSeeds()" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
-          <i class="fa-solid fa-rotate-right mr-1.5"></i> Reset Demo Data
+        <button onclick="clearAllData()" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 transition">
+          <i class="fa-solid fa-trash-can mr-1.5"></i> Clear Records
         </button>
         <a href="/docs" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition shadow-sm">
           <i class="fa-solid fa-bolt mr-1.5"></i> API Docs
@@ -259,12 +259,9 @@ def standalone_web_dashboard():
           </div>
 
           <div class="flex items-center space-x-3 pt-2">
-            <button id="submitBtn" onclick="submitFeedback()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-2 px-4 rounded-lg transition flex items-center justify-center space-x-2">
+            <button id="submitBtn" onclick="submitFeedback()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-2 px-4 rounded-lg transition flex items-center justify-center space-x-2">
               <i class="fa-solid fa-wand-magic-sparkles"></i>
               <span>Analyze & Ingest Feedback</span>
-            </button>
-            <button onclick="fillQuickEmergency()" class="text-xs bg-slate-800 hover:bg-slate-700 text-red-300 border border-red-500/30 py-2 px-3 rounded-lg transition">
-              Quick Test: Gas Hazard
             </button>
           </div>
         </div>
@@ -578,21 +575,15 @@ def standalone_web_dashboard():
       }
     }
 
-    async function resetSeeds() {
-      if (!confirm("Reset database to initial demonstration dataset?")) return;
+    async function clearAllData() {
+      if (!confirm("Clear all feedback records from database?")) return;
       try {
-        await fetch('/api/feedback/reset', { method: 'POST' });
+        await fetch('/api/feedback/clear', { method: 'POST' });
         await fetchAnalytics();
         await loadFeedbackList();
       } catch (e) {
-        alert("Failed to reset: " + e.message);
+        alert("Failed to clear records: " + e.message);
       }
-    }
-
-    function fillQuickEmergency() {
-      document.getElementById('feedbackInput').value = "URGENT: A live high-voltage electric cable just snapped and is hanging into the water puddle outside Oak Park Elementary. Kids are walking by!";
-      document.getElementById('locationInput').value = "Oak Park Elementary School";
-      document.getElementById('sourceInput').value = "hotline_audio";
     }
 
     // Initial load

@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     """Application configuration settings."""
     app_name: str = "Signal2Insight API"
     app_version: str = "1.0.0"
-    app_env: str = "development"
-    debug: bool = True
+    app_env: str = "production"
+    debug: bool = False
     port: int = 8000
     host: str = "0.0.0.0"
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Storage settings
     sqlite_db_path: str = "signal2insight.db"
-    enable_seed_data: bool = True
+    enable_seed_data: bool = False  # Production real-data mode: No demo data loaded
 
     @field_validator("debug", mode="before")
     @classmethod

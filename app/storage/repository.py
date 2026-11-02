@@ -28,9 +28,6 @@ class FeedbackRepository:
         self._init_db()
         self._load_from_db()
 
-        if not self._cache and settings.enable_seed_data:
-            self.load_seed_data()
-
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
@@ -62,38 +59,23 @@ class FeedbackRepository:
             cursor = conn.execute("SELECT * FROM feedback_entries ORDER BY created_at DESC")
             rows = cursor.fetchall()
             for r in rows:
-                entry = FeedbackEntry(
-                    entry_id=r["entry_id"],
-                    raw_text=r["raw_text"],
-                    source=r["source"],
-                    location=r["location"],
-                    created_at=datetime.fromisoformat(r["created_at"]),
-                    category=FeedbackCategory(r["category"]),
-                    sentiment=SentimentType(r["sentiment"]),
-                    urgency_score=r["urgency_score"],
-                    is_critical_alert=bool(r["is_critical_alert"]),
-                    summary=r["summary"],
-                    recommended_action=r["recommended_action"],
-                )
-                self._cache[entry.entry_id] = entry
-
-    def load_seed_data(self):
-        """Loads default civic seed records from data/seed_data.json."""
-        seed_path = Path("data/seed_data.json")
-        if not seed_path.exists():
-            # Check relative to project root
-            seed_path = Path(__file__).resolve().parent.parent.parent / "data" / "seed_data.json"
-
-        if seed_path.exists():
-            try:
-                with open(seed_path, "r", encoding="utf-8") as f:
-                    items = json.load(f)
-                    for item in items:
-                        entry = FeedbackEntry(**item)
-                        self.add_entry(entry)
-                logger.info(f"Loaded {len(items)} seed entries successfully.")
-            except Exception as e:
-                logger.error(f"Failed to load seed data: {e}")
+                try:
+                    entry = FeedbackEntry(
+                        entry_id=r["entry_id"],
+                        raw_text=r["raw_text"],
+                        source=r["source"],
+                        location=r["location"],
+                        created_at=datetime.fromisoformat(r["created_at"]),
+                        category=FeedbackCategory(r["category"]),
+                        sentiment=SentimentType(r["sentiment"]),
+                        urgency_score=r["urgency_score"],
+                        is_critical_alert=bool(r["is_critical_alert"]),
+                        summary=r["summary"],
+                        recommended_action=r["recommended_action"],
+                    )
+                    self._cache[entry.entry_id] = entry
+                except Exception as e:
+                    logger.warning(f"Failed to parse entry {r['entry_id']}: {e}")
 
     def add_entry(self, entry: FeedbackEntry) -> FeedbackEntry:
         """Stores a feedback entry in memory and SQLite."""
@@ -140,6 +122,15 @@ class FeedbackRepository:
                     conn.commit()
                 return True
             return False
+
+    def clear_all(self):
+        """Clears all feedback records from memory and database."""
+        with self._lock:
+            self._cache.clear()
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM feedback_entries")
+                conn.commit()
+        logger.info("Cleared all feedback records from database.")
 
     def list_entries(
         self,
@@ -233,15 +224,6 @@ class FeedbackRepository:
             urgency_distribution=urg_dist,
             recent_critical_alerts=critical_alerts[:10],
         )
-
-    def reset_to_seed(self):
-        """Clears all records and reloads default seeds."""
-        with self._lock:
-            self._cache.clear()
-            with self._get_connection() as conn:
-                conn.execute("DELETE FROM feedback_entries")
-                conn.commit()
-        self.load_seed_data()
 
 
 # Global singleton repository instance

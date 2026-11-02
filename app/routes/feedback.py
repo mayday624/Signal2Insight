@@ -217,10 +217,10 @@ def delete_feedback(entry_id: str):
 
 
 @router.post(
-    "/reset",
-    summary="Reset database to default seed records",
+    "/clear",
+    summary="Clear all feedback records",
 )
-def reset_database():
-    """Resets the repository with standard seed demonstration records."""
-    repository.reset_to_seed()
-    return {"status": "success", "message": "Database reset to initial demo seeds."}
+def clear_all_feedback():
+    """Wipes all feedback records from the database."""
+    repository.clear_all()
+    return {"status": "success", "message": "All feedback records cleared."}

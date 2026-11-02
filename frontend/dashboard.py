@@ -1,7 +1,6 @@
 import os
 import sys
 from pathlib import Path
-import json
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -32,13 +31,13 @@ def check_api_status() -> bool:
 def get_entries():
     """Retrieve entries either via FastAPI or direct local repository."""
     try:
-        r = httpx.get(f"{API_BASE_URL}/api/feedback?limit=500", timeout=2.0)
+        r = httpx.get(f"{API_BASE_URL}/api/feedback?limit=1000", timeout=2.0)
         if r.status_code == 200:
             return [FeedbackEntry(**item) for item in r.json()]
     except Exception:
         pass
     # Fallback to direct repository access (ideal for Streamlit Cloud standalone)
-    return repository.list_entries(limit=500)
+    return repository.list_entries(limit=1000)
 
 
 def get_analytics():
@@ -101,10 +100,10 @@ def render_dashboard():
         st.sidebar.info("● Standalone Mode (Direct Cloud Storage Active)")
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Quick Actions")
-    if st.sidebar.button("🔄 Reload Demo Seed Data", use_container_width=True):
-        repository.reset_to_seed()
-        st.sidebar.success("Database reset to demo seeds!")
+    st.sidebar.subheader("Data Management")
+    if st.sidebar.button("🗑️ Clear All Records", use_container_width=True):
+        repository.clear_all()
+        st.sidebar.success("All feedback records cleared!")
         st.rerun()
 
     st.sidebar.markdown("---")
@@ -124,7 +123,7 @@ def render_dashboard():
 
     # --- Header & Alerts ---
     st.title("📡 Signal2Insight: Civic Engagement Intelligence")
-    st.caption("AI-powered unstructured feedback ingestion, real-time urgency triage, and actionable municipal summaries.")
+    st.caption("AI-powered unstructured community feedback ingestion, real-time urgency triage, and actionable municipal summaries.")
 
     analytics = get_analytics()
     total_entries = analytics.get("total_entries", 0)
@@ -151,9 +150,9 @@ def render_dashboard():
     # --- KPI Metric Cards ---
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric(label="Total Signals Ingested", value=total_entries, delta=f"{total_entries} records")
+        st.metric(label="Total Signals Ingested", value=total_entries)
     with col2:
-        st.metric(label="Critical Hazards Flagged", value=critical_count, delta="Requires immediate triage", delta_color="inverse")
+        st.metric(label="Critical Hazards Flagged", value=critical_count, delta="Requires triage" if critical_count > 0 else None, delta_color="inverse")
     with col3:
         st.metric(label="Average Urgency Score", value=f"{avg_urgency} / 5.0")
     with col4:
@@ -177,7 +176,7 @@ def render_dashboard():
             fig_cat.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=260)
             st.plotly_chart(fig_cat, use_container_width=True)
         else:
-            st.info("No category data available.")
+            st.info("No feedback entries submitted yet.")
 
     with chart_col2:
         st.subheader("Sentiment Breakdown")
@@ -191,12 +190,12 @@ def render_dashboard():
             fig_sent.update_layout(margin=dict(t=20, b=20, l=10, r=10), height=260)
             st.plotly_chart(fig_sent, use_container_width=True)
         else:
-            st.info("No sentiment data available.")
+            st.info("No sentiment data yet.")
 
     with chart_col3:
         st.subheader("Urgency Level (1-5)")
         urg_dist = analytics.get("urgency_distribution", {})
-        if urg_dist:
+        if urg_dist and sum(urg_dist.values()) > 0:
             scores = [f"Score {k}" for k in urg_dist.keys()]
             counts = list(urg_dist.values())
             colors = ["#10b981", "#06b6d4", "#f59e0b", "#f97316", "#ef4444"]
@@ -209,46 +208,33 @@ def render_dashboard():
             )
             st.plotly_chart(fig_urg, use_container_width=True)
         else:
-            st.info("No urgency data.")
+            st.info("No urgency ratings yet.")
 
     st.markdown("---")
 
-    # --- Ingestion Portal Section ---
-    st.subheader("⚡ Live Feedback Ingestion & AI Structured Extraction")
-    st.caption("Submit unstructured citizen feedback to trigger real-time Pydantic extraction with LLM classification.")
+    # --- Live Citizen Feedback Ingestion ---
+    st.subheader("⚡ Live Citizen Ingestion Portal")
+    st.caption("Submit unstructured community feedback (text or voice recording) to trigger real-time AI classification.")
 
     tab_text, tab_audio = st.tabs(["📝 Text Submission", "🎙️ Audio Voicemail Submission"])
 
     with tab_text:
-        quick_test = st.radio(
-            "Load Quick Demonstration Scenario:",
-            [
-                "Custom Input",
-                "Emergency: Live downed power line on sidewalk",
-                "Public Health: Brown tap water in residential block",
-                "Community Commendation: Swift playground repairs"
-            ],
-            horizontal=True
+        user_text = st.text_area(
+            "Citizen Feedback Verbatim Text:",
+            value="",
+            height=120,
+            placeholder="Type citizen complaints, safety reports, requests, or community feedback here..."
         )
-
-        preset_texts = {
-            "Emergency: Live downed power line on sidewalk": "URGENT: High voltage live power line snapped and is sparking into a standing water puddle on 4th and Main near the playground. People are walking by!",
-            "Public Health: Brown tap water in residential block": "There is murky brown tap water with an oily smell running from the taps in our apartment complex on Maple St. Kids are complaining of stomach aches.",
-            "Community Commendation: Swift playground repairs": "I wanted to send a big thank you to the parks crew for repairing the broken swing set at Lincoln Park. It looks great and was done so fast!"
-        }
-
-        default_val = preset_texts.get(quick_test, "")
-        user_text = st.text_area("Citizen Feedback Verbatim Text:", value=default_val, height=90, placeholder="Enter citizen comments, complaints, or compliments here...")
 
         loc_col, src_col = st.columns(2)
         with loc_col:
-            input_location = st.text_input("Reported Location (optional):", value="Downtown District" if quick_test != "Custom Input" else "")
+            input_location = st.text_input("Location / Neighborhood / District (optional):", value="", placeholder="e.g. Ward 4, 5th Ave & Market St")
         with src_col:
-            input_source = st.selectbox("Source Channel:", ["text", "web_form", "sms", "hotline"])
+            input_source = st.selectbox("Source Channel:", ["web_form", "sms", "text", "hotline"])
 
-        if st.button("🚀 Process & Ingest Feedback", type="primary", use_container_width=True):
+        if st.button("🚀 Analyze & Ingest Feedback", type="primary", use_container_width=True):
             if not user_text.strip():
-                st.warning("Please enter feedback text.")
+                st.warning("Please enter feedback text before submitting.")
             else:
                 with st.spinner("AI Engine analyzing unstructured feedback..."):
                     import asyncio
@@ -257,7 +243,7 @@ def render_dashboard():
                     new_entry = FeedbackEntry(
                         raw_text=user_text,
                         source=input_source,
-                        location=input_location or None,
+                        location=input_location.strip() or None,
                         category=analysis.category,
                         sentiment=analysis.sentiment,
                         urgency_score=analysis.urgency_score,
@@ -267,26 +253,26 @@ def render_dashboard():
                     )
                     repository.add_entry(new_entry)
 
-                    st.success("Entry successfully analyzed and stored!")
+                    st.success("Feedback successfully analyzed and logged!")
                     res_col1, res_col2 = st.columns([1, 1])
                     with res_col1:
                         st.json(new_entry.model_dump(mode="json"))
                     with res_col2:
                         if new_entry.is_critical_alert:
-                            st.error(f"🚨 CRITICAL ALERT\n\n**Category:** {new_entry.category.value}\n**Urgency:** {new_entry.urgency_score}/5\n\n**Summary:** {new_entry.summary}\n\n**Recommended Action:** {new_entry.recommended_action}")
+                            st.error(f"🚨 CRITICAL ALERT TRIGGERED\n\n**Category:** {new_entry.category.value}\n**Urgency:** {new_entry.urgency_score}/5\n\n**Summary:** {new_entry.summary}\n\n**Recommended Action:** {new_entry.recommended_action}")
                         else:
-                            st.info(f"✅ STANDARD LOG\n\n**Category:** {new_entry.category.value}\n**Urgency:** {new_entry.urgency_score}/5\n\n**Summary:** {new_entry.summary}\n\n**Recommended Action:** {new_entry.recommended_action}")
+                            st.info(f"✅ RECORD LOGGED\n\n**Category:** {new_entry.category.value}\n**Urgency:** {new_entry.urgency_score}/5\n\n**Summary:** {new_entry.summary}\n\n**Recommended Action:** {new_entry.recommended_action}")
                     st.rerun()
 
     with tab_audio:
-        st.write("Upload a civic hotline voicemail or citizen voice recording (.wav, .mp3, .m4a):")
+        st.write("Upload a citizen audio recording or hotline voicemail (.wav, .mp3, .m4a):")
         uploaded_file = st.file_uploader("Upload Audio File", type=["wav", "mp3", "m4a"])
-        audio_loc = st.text_input("Audio Location (optional):", value="Voicemail Line 1")
+        audio_loc = st.text_input("Audio Location / Channel (optional):", value="", placeholder="e.g. Hotline Line 1")
 
         if uploaded_file is not None:
             st.audio(uploaded_file)
             if st.button("🎙️ Transcribe & Analyze Voicemail", type="primary"):
-                with st.spinner("Transcribing audio and extracting structured civic insights..."):
+                with st.spinner("Transcribing audio and extracting structured insights..."):
                     import asyncio
                     file_bytes = uploaded_file.read()
                     transcribed = asyncio.run(transcribe_audio_file(file_bytes, uploaded_file.name))
@@ -296,7 +282,7 @@ def render_dashboard():
                     entry = FeedbackEntry(
                         raw_text=transcribed,
                         source="audio",
-                        location=audio_loc,
+                        location=audio_loc.strip() or None,
                         category=analysis.category,
                         sentiment=analysis.sentiment,
                         urgency_score=analysis.urgency_score,
@@ -312,7 +298,7 @@ def render_dashboard():
     st.markdown("---")
 
     # --- Feedback Feed Table ---
-    st.subheader("📋 Civic Feedback Records & Municipal Action Plan")
+    st.subheader("📋 Real-Time Civic Feedback Feed")
 
     all_entries = get_entries()
 
@@ -359,7 +345,7 @@ def render_dashboard():
             mime="text/csv",
         )
     else:
-        st.info("No records match your selected filters.")
+        st.info("No feedback entries found. Submit a report above to populate the feed.")
 
 
 if __name__ == "__main__":
