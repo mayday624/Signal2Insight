@@ -1,11 +1,6 @@
-# 📡 Signal2Insight — AI-Powered Civic Engagement Intelligence
+Signal2Insight — AI-Powered Civic Engagement Intelligence
 
-> **ImpactHack 2026 Submission**  
-> Turning unstructured citizen signals into prioritized, actionable municipal intelligence in real-time.
-
----
-
-## 🌟 Overview
+Overview
 
 Cities receive thousands of unstructured messages daily across text, web forms, and hotline voicemails. Most municipal systems struggle to triage emergencies fast enough or spot emerging neighborhood hazards before they escalate.
 
@@ -18,7 +13,7 @@ Cities receive thousands of unstructured messages daily across text, web forms, 
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 Signal2Insight/
@@ -48,7 +43,7 @@ Signal2Insight/
 
 ---
 
-## 📐 Pydantic Data Schema
+##  Pydantic Data Schema
 
 Every feedback signal analyzed by the pipeline adheres to the following specification:
 
@@ -116,7 +111,7 @@ pytest -v tests/test_pipeline.py
 
 ---
 
-## 📡 API Endpoints
+##  API Endpoints
 
 ### Ingestion & Query
 - `POST /api/feedback/ingest` — Ingest raw feedback text, trigger AI analysis, return validated Pydantic record.
@@ -135,7 +130,3 @@ pytest -v tests/test_pipeline.py
 
 ---
 
-## 🏆 Hackathon Highlights
-- **Resilient AI Fallback:** Never crashes if LLM keys are absent, expired, or rate-limited.
-- **Async First:** High-throughput async endpoints capable of handling sudden spikes during civic events.
-- **Dual Dashboard Modes:** Includes both an interactive Streamlit app and a lightweight Tailwind/Chart.js web dashboard served directly from FastAPI.
