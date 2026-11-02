@@ -1,6 +1,7 @@
 import os
+from typing import Optional, Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -20,6 +21,17 @@ class Settings(BaseSettings):
     # Storage settings
     sqlite_db_path: str = "signal2insight.db"
     enable_seed_data: bool = True
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, v: Any) -> bool:
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in ("release", "prod", "production", "false", "0", "no"):
+                return False
+            if clean in ("debug", "dev", "development", "true", "1", "yes"):
+                return True
+        return bool(v)
 
     model_config = SettingsConfigDict(
         env_file=".env",
